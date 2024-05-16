@@ -1,21 +1,34 @@
+import sys
 import requests
 import pyperclip
-import keyboard
-import sys
 
 
-# docker build -t citations .
-# docker run -it --rm citations
-def get_citation_journal(doi):
+def format_datu_kopa():
+    authors = input("Enter authors (Surname, N.): ")
+    title = input("Enter title: ")
+    publisher = input("Enter publisher: ")
+    publication_date = input("Enter publication date (e.g., 'July 29, 2021'): ")
+    url = input("Enter URL: ")
+
+    reference = f"{authors}. {title} [datu kopa]. {publisher}, {publication_date}. Pieejams: {url}"
+
+    # Copy the citation to clipboard
+    pyperclip.copy(reference)
+
+    print("Formatted reference:")
+    print(reference)
+
+
+def format_zinatniskais_zurnals(doi):
     """
-    Builds journal citation information from Crossref API based on DOI and copies it to clipboard.
+        Builds journal citation information from Crossref API based on DOI and copies it to clipboard.
 
-    Args:
-        doi (str): The DOI (Digital Object Identifier) of the publication.
+        Args:
+            doi (str): The DOI (Digital Object Identifier) of the publication.
 
-    Returns:
-        None
-    """
+        Returns:
+            None
+        """
     # Make the API call
     url = f"https://api.crossref.org/works/{doi}"
     response = requests.get(url)
@@ -38,10 +51,11 @@ def get_citation_journal(doi):
         authors = ", ".join([f"{author['family']}, {author['given'][0]}." for author in data['message']['author']])
         title = " ".join(data['message']['title'])
         journal = data['message']['container-title'][0]
-        volume = data['message']['volume']
-        issue = data['message'].get('issue', None)  # Using get() to handle missing 'issue'
-        pages = data['message']['page']
-        year = data['message']['published-print']['date-parts'][0][0]
+        volume = data['message'].get('volume', None)  # get handles missing
+        # volume = data['message']['volume']
+        issue = data['message'].get('issue', None)
+        pages = data['message'].get('page', None)
+        year = data['message']['created']['date-parts'][0][0]
         issn_list = data['message']['ISSN']
         issn_print = issn_list[0]
         issn_electronic = issn_list[1] if len(issn_list) > 1 else None  # Use None if only one ISSN is available
@@ -49,35 +63,49 @@ def get_citation_journal(doi):
 
         # according to: 7. PUBLIKĀCIJA ZINĀTNISKAJĀ ŽURNĀLĀ:
         # https://ebooks.rtu.lv/wp-content/uploads/sites/32/2023/03/9789934226960-DITF_metodiskie_norad-2021-LV.pdf
-        citation_parts = [authors, title, ".", journal, ".", f"{year}, vol. {volume},"]
-        if issue:
-            citation_parts.append(f"no. {issue},")
-        citation_parts.extend([f"pp. {pages}.", f"ISSN {issn_print}."])
-        if issn_electronic:
-            citation_parts.append(f"e-ISSN {issn_electronic}.")
-        citation_parts.append(f"Available from: {doi_link}.")
+        reference_parts = [authors, title, ".", journal, ".", f"{year}, vol. {volume},"]
 
-        citation = " ".join(citation_parts)
+        if issue:
+            reference_parts.append(f"no. {issue},")
+        reference_parts.extend([f"pp. {pages}.", f"ISSN {issn_print}."])
+        if issn_electronic:
+            reference_parts.append(f"e-ISSN {issn_electronic}.")
+        reference_parts.append(f"Available from: {doi_link}.")
+
+        reference = " ".join(reference_parts)
 
         # Copy the citation to clipboard
-        pyperclip.copy(citation)
+        pyperclip.copy(reference)
 
-        print("Citation:")
-        print(citation)
+        print("Formatted reference:")
+        print(reference)
     else:
         print(f"Error: {response.status_code}")
 
 
 def main():
-    """
-    Main function to interact with the user and call get_citation function.
-    """
+    style_options = ['7', '14']
+    print("Available formatting styles: ")
+    for option in style_options:
+        print(option)
+
     while True:
-        try:
-            doi = input("\nEnter DOI: ")
-            get_citation_journal(doi)
-        except Exception as e:
-            print("Error:", e)
+        style = input("\n Choose a formatting style: ").upper()
+
+        match style:
+            case "7":
+                try:
+                    doi = input("\n Enter DOI: ")
+                    format_zinatniskais_zurnals(doi)
+                except Exception as e:
+                    print("Error: ", e)
+            case "14":
+                try:
+                    format_datu_kopa()
+                except SyntaxError as s:
+                    print("Error: ", s)
+            case default:
+                print("\n Error: Invalid")
 
         stop = input("Continue? y/n  ").upper()
         if stop == "N":
